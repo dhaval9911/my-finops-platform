@@ -1,11 +1,12 @@
 name: optscale
 
+x-app-environment: &app-environment
+  HX_ETCD_HOST: etcd
+  HX_ETCD_PORT: ${ETCD_PORT}
+
 x-app-defaults: &app-defaults
   env_file:
     - .env
-  environment:
-    HX_ETCD_HOST: etcd
-    HX_ETCD_PORT: ${ETCD_PORT}
   restart: unless-stopped
   networks:
     - optscale
@@ -37,12 +38,14 @@ services:
       retries: 12
       start_period: 10s
     environment:
+      <<: *app-environment
       ETCDCTL_API: "3"
 
   mariadb:
     <<: *app-defaults
     image: mariadb:11.4
     environment:
+      <<: *app-environment
       MARIADB_ROOT_PASSWORD: ${MARIADB_PASSWORD}
       MARIADB_DATABASE: ${MARIADB_BOOTSTRAP_DB}
       MARIADB_USER: ${MARIADB_APP_USER}
@@ -72,6 +75,7 @@ services:
       - --wiredTigerCacheSizeGB
       - "${MONGO_CACHE_SIZE_GB}"
     environment:
+      <<: *app-environment
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
     expose:
@@ -94,6 +98,7 @@ services:
     <<: *app-defaults
     image: rabbitmq:4.1-management-alpine
     environment:
+      <<: *app-environment
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
       RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
@@ -135,6 +140,7 @@ services:
     <<: *app-defaults
     image: clickhouse/clickhouse-server:24.8-alpine
     environment:
+      <<: *app-environment
       CLICKHOUSE_DB: ${CLICKHOUSE_DB}
       CLICKHOUSE_USER: ${CLICKHOUSE_USER}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
@@ -158,6 +164,7 @@ services:
     <<: *app-defaults
     image: influxdb:1.8-alpine
     environment:
+      <<: *app-environment
       INFLUXDB_DB: ${INFLUXDB_DB}
       INFLUXDB_HTTP_AUTH_ENABLED: "false"
     expose:
@@ -178,6 +185,7 @@ services:
     image: minio/minio:RELEASE.2025-02-03T21-03-04Z
     command: server /data --console-address ":${MINIO_CONSOLE_PORT}"
     environment:
+      <<: *app-environment
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     expose:
@@ -247,6 +255,7 @@ services:
       context: .
       dockerfile: rest_api/Dockerfile
     environment:
+      <<: *app-environment
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
       FAKE_CAD_ENABLED: ${FAKE_CAD_ENABLED}
       OTEL_ENABLED: ${OTEL_ENABLED}
@@ -303,6 +312,7 @@ services:
       context: .
       dockerfile: herald/Dockerfile
     environment:
+      <<: *app-environment
       HERALD_SERVICE: api
     expose:
       - "${HERALD_PORT}"
@@ -320,6 +330,7 @@ services:
       context: .
       dockerfile: herald/Dockerfile
     environment:
+      <<: *app-environment
       HERALD_SERVICE: engine
     volumes:
       - herald_email_templates:/usr/src/app/herald/modules/email_generator/custom_templates
@@ -338,6 +349,7 @@ services:
       context: .
       dockerfile: katara/katara_service/Dockerfile
     environment:
+      <<: *app-environment
       HX_KATARA_ROLE: api
     expose:
       - "${KATARA_PORT}"
@@ -357,6 +369,7 @@ services:
       context: .
       dockerfile: katara/katara_service/Dockerfile
     environment:
+      <<: *app-environment
       HX_KATARA_ROLE: scheduler
     depends_on:
       katara:
@@ -387,6 +400,7 @@ services:
       context: .
       dockerfile: diworker/Dockerfile
     environment:
+      <<: *app-environment
       FAKE_CAD_ENABLED: ${FAKE_CAD_ENABLED}
     volumes:
       - diworker_reports:/src/reports
@@ -579,6 +593,7 @@ services:
       context: .
       dockerfile: ngui/Dockerfile
     environment:
+      <<: *app-environment
       UI_BUILD_PATH: /usr/src/app/ui
       PROXY_URL: http://nginx
       PORT: ${NGUI_PORT}
