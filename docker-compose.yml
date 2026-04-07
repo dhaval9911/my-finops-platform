@@ -18,6 +18,7 @@ services:
       - /usr/local/bin/etcd
       - --name=etcd
       - --data-dir=/etcd-data
+      - --enable-v2=true
       - --listen-client-urls=http://0.0.0.0:${ETCD_PORT}
       - --advertise-client-urls=http://etcd:${ETCD_PORT}
     expose:
