@@ -47,3 +47,5 @@ rest_api/rest_api_server/tests/binaries/
 
 # OS / misc
 .DS_Store
+.env
+docker/local/config.yaml
