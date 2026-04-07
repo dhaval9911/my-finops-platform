@@ -135,3 +135,5 @@ etcd:
   events_queue: "${EVENTS_QUEUE}"
   resources_discovery_cache_time: "${RESOURCES_DISCOVERY_CACHE_TIME}"
   token_expiration: "${TOKEN_EXPIRATION}"
+  diworker:
+    max_report_imports_workers: 10
