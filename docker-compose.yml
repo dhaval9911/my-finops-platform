@@ -458,6 +458,7 @@ services:
     build:
       context: .
       dockerfile: metroculus/metroculus_scheduler/Dockerfile
+    restart: "no"
     depends_on:
       configurator:
         condition: service_completed_successfully
@@ -466,7 +467,7 @@ services:
       rabbitmq:
         condition: service_healthy
       restapi:
-        condition: service_started
+        condition: service_healthy
 
   trapper-worker:
     <<: *app-defaults
@@ -492,6 +493,7 @@ services:
     build:
       context: .
       dockerfile: trapper/trapper_scheduler/Dockerfile
+    restart: "no"
     depends_on:
       configurator:
         condition: service_completed_successfully
@@ -500,7 +502,7 @@ services:
       rabbitmq:
         condition: service_healthy
       restapi:
-        condition: service_started
+        condition: service_healthy
 
   bumiworker:
     <<: *app-defaults
