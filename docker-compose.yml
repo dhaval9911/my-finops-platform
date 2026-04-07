@@ -26,12 +26,17 @@ services:
       - etcd_data:/etcd-data
     healthcheck:
       test:
-        - CMD-SHELL
-        - ETCDCTL_API=3 etcdctl --endpoints=http://127.0.0.1:${ETCD_PORT} endpoint health
+        - CMD
+        - etcdctl
+        - --endpoints=http://127.0.0.1:${ETCD_PORT}
+        - endpoint
+        - health
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 10s
+    environment:
+      ETCDCTL_API: "3"
 
   mariadb:
     <<: *app-defaults
