@@ -1,0 +1,135 @@
+name: optscale
+
+services:
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.16
+    command:
+      - /usr/local/bin/etcd
+      - --name=etcd
+      - --data-dir=/etcd-data
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd:2379
+    expose:
+      - "2379"
+    volumes:
+      - etcd_data:/etcd-data
+    networks:
+      - optscale
+
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ROOT_PASSWORD: localdev
+      MARIADB_DATABASE: defaultdb
+      MARIADB_USER: optscale
+      MARIADB_PASSWORD: localdev
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max-connections=500
+    expose:
+      - "3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - optscale
+
+  mongo:
+    image: mongo:7.0
+    command:
+      - --bind_ip_all
+      - --wiredTigerCacheSizeGB
+      - "1"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: localdev
+    expose:
+      - "27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - optscale
+
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: optscale
+      RABBITMQ_DEFAULT_PASS: localdev
+      RABBITMQ_ERLANG_COOKIE: localcomposecookie
+    expose:
+      - "5672"
+      - "15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - optscale
+
+  redis:
+    image: redis:7.4-alpine
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - optscale
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8-alpine
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: localdev
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    expose:
+      - "9000"
+      - "8123"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+    networks:
+      - optscale
+
+  influxdb:
+    image: influxdb:1.8-alpine
+    environment:
+      INFLUXDB_DB: metrics
+      INFLUXDB_HTTP_AUTH_ENABLED: "false"
+    expose:
+      - "8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb
+    networks:
+      - optscale
+
+  minio:
+    image: minio/minio:RELEASE.2025-02-03T21-03-04Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: optscale-minio
+      MINIO_ROOT_PASSWORD: localdevminio
+    expose:
+      - "9000"
+      - "9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - optscale
+
+networks:
+  optscale:
+    driver: bridge
+
+volumes:
+  etcd_data:
+  mariadb_data:
+  mongo_data:
+  rabbitmq_data:
+  redis_data:
+  clickhouse_data:
+  clickhouse_logs:
+  influxdb_data:
+  minio_data:
