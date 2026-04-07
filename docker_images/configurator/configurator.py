@@ -93,8 +93,8 @@ class Configurator(object):
             if ch_host == CH_LOCAL_NAME and str(ch_port) != str(CH_HTTP_PORT):
                 logger.info("Updating clickhouse port to %s", CH_HTTP_PORT)
                 self.etcd_cl.write("/clickhouse/port", CH_HTTP_PORT)
-        except etcd.EtcdKeyNotFound:
-            logger.info("Skipping update ch port due to missing key")
+        except (etcd.EtcdKeyNotFound, KeyError) as exc:
+            logger.info("Skipping update ch port due to missing key: %s", exc)
 
     def commit_config(self):
         logger.info("Creating /configured key")
