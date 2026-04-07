@@ -7,6 +7,7 @@ x-app-environment: &app-environment
 x-app-defaults: &app-defaults
   env_file:
     - .env
+  environment: *app-environment
   restart: unless-stopped
   networks:
     - optscale
