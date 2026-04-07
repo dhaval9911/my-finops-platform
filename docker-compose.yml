@@ -1,123 +1,216 @@
 name: optscale
 
+x-app-defaults: &app-defaults
+  env_file:
+    - .env
+  environment:
+    HX_ETCD_HOST: etcd
+    HX_ETCD_PORT: ${ETCD_PORT}
+  restart: unless-stopped
+  networks:
+    - optscale
+
 services:
   etcd:
+    <<: *app-defaults
     image: quay.io/coreos/etcd:v3.5.16
     command:
       - /usr/local/bin/etcd
       - --name=etcd
       - --data-dir=/etcd-data
-      - --listen-client-urls=http://0.0.0.0:2379
-      - --advertise-client-urls=http://etcd:2379
+      - --listen-client-urls=http://0.0.0.0:${ETCD_PORT}
+      - --advertise-client-urls=http://etcd:${ETCD_PORT}
     expose:
-      - "2379"
+      - "${ETCD_PORT}"
     volumes:
       - etcd_data:/etcd-data
-    networks:
-      - optscale
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - ETCDCTL_API=3 etcdctl --endpoints=http://127.0.0.1:${ETCD_PORT} endpoint health
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   mariadb:
+    <<: *app-defaults
     image: mariadb:11.4
     environment:
-      MARIADB_ROOT_PASSWORD: localdev
-      MARIADB_DATABASE: defaultdb
-      MARIADB_USER: optscale
-      MARIADB_PASSWORD: localdev
+      MARIADB_ROOT_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_BOOTSTRAP_DB}
+      MARIADB_USER: ${MARIADB_APP_USER}
+      MARIADB_PASSWORD: ${MARIADB_APP_PASSWORD}
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --max-connections=500
     expose:
-      - "3306"
+      - "${MARIADB_PORT}"
     volumes:
       - mariadb_data:/var/lib/mysql
-    networks:
-      - optscale
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h 127.0.0.1 -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" --silent
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   mongo:
+    <<: *app-defaults
     image: mongo:7.0
     command:
       - --bind_ip_all
       - --wiredTigerCacheSizeGB
-      - "1"
+      - "${MONGO_CACHE_SIZE_GB}"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: localdev
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
     expose:
-      - "27017"
+      - "${MONGO_PORT}"
     volumes:
       - mongo_data:/data/db
-    networks:
-      - optscale
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          mongosh --quiet
+          "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@127.0.0.1:${MONGO_PORT}/admin?authSource=admin"
+          --eval "db.adminCommand('ping').ok"
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   rabbitmq:
+    <<: *app-defaults
     image: rabbitmq:4.1-management-alpine
     environment:
-      RABBITMQ_DEFAULT_USER: optscale
-      RABBITMQ_DEFAULT_PASS: localdev
-      RABBITMQ_ERLANG_COOKIE: localcomposecookie
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
     expose:
-      - "5672"
-      - "15672"
+      - "${RABBITMQ_PORT}"
+      - "${RABBITMQ_MANAGEMENT_PORT}"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - optscale
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   redis:
+    <<: *app-defaults
     image: redis:7.4-alpine
     command:
       - redis-server
       - --appendonly
       - "yes"
     expose:
-      - "6379"
+      - "${REDIS_PORT}"
     volumes:
       - redis_data:/data
-    networks:
-      - optscale
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - redis-cli ping | grep -q PONG
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
 
   clickhouse:
+    <<: *app-defaults
     image: clickhouse/clickhouse-server:24.8-alpine
     environment:
-      CLICKHOUSE_DB: default
-      CLICKHOUSE_USER: default
-      CLICKHOUSE_PASSWORD: localdev
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
     expose:
-      - "9000"
-      - "8123"
+      - "${CLICKHOUSE_TCP_PORT}"
+      - "${CLICKHOUSE_HTTP_PORT}"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
-    networks:
-      - optscale
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -qO- "http://127.0.0.1:${CLICKHOUSE_HTTP_PORT}/ping" | grep -q Ok.
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   influxdb:
+    <<: *app-defaults
     image: influxdb:1.8-alpine
     environment:
-      INFLUXDB_DB: metrics
+      INFLUXDB_DB: ${INFLUXDB_DB}
       INFLUXDB_HTTP_AUTH_ENABLED: "false"
     expose:
-      - "8086"
+      - "${INFLUXDB_PORT}"
     volumes:
       - influxdb_data:/var/lib/influxdb
-    networks:
-      - optscale
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q --spider "http://127.0.0.1:${INFLUXDB_PORT}/ping"
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   minio:
+    <<: *app-defaults
     image: minio/minio:RELEASE.2025-02-03T21-03-04Z
-    command: server /data --console-address ":9001"
+    command: server /data --console-address ":${MINIO_CONSOLE_PORT}"
     environment:
-      MINIO_ROOT_USER: optscale-minio
-      MINIO_ROOT_PASSWORD: localdevminio
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     expose:
-      - "9000"
-      - "9001"
+      - "${MINIO_PORT}"
+      - "${MINIO_CONSOLE_PORT}"
     volumes:
       - minio_data:/data
-    networks:
-      - optscale
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS "http://127.0.0.1:${MINIO_PORT}/minio/health/live" >/dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  configurator:
+    <<: *app-defaults
+    build:
+      context: .
+      dockerfile: docker_images/configurator/Dockerfile
+    restart: "no"
+    volumes:
+      - ./docker/local/config.yaml:/config/config:ro
+    depends_on:
+      etcd:
+        condition: service_healthy
+      mariadb:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
 
 networks:
   optscale:
