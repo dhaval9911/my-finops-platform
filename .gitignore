@@ -29,3 +29,21 @@ jira_ui/*/build/
 
 # Vagrant
 optscale-deploy/.vagrant/
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Binaries
+*.tar.gz
+*.zip
+*.bin
+
+# Clickhouse test binaries
+rest_api/rest_api_server/tests/binaries/
+
+# Large JSON dumps
+*.json
+
+# OS / misc
+.DS_Store
