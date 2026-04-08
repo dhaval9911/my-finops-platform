@@ -137,3 +137,7 @@ etcd:
   token_expiration: "${TOKEN_EXPIRATION}"
   diworker:
     max_report_imports_workers: 10
+  stripe:
+    api_key: "${STRIPE_API_KEY}"
+    webhook_secret: "${STRIPE_WEBHOOK_SECRET}"
+    enabled: "${STRIPE_ENABLED}"
