@@ -597,6 +597,10 @@ services:
       dockerfile: ngui/Dockerfile
     environment:
       <<: *app-environment
+      AUTH_ENDPOINT: http://auth:${AUTH_PORT}
+      KEEPER_ENDPOINT: http://keeper:${KEEPER_PORT}
+      RESTAPI_ENDPOINT: http://restapi:${RESTAPI_PORT}
+      SLACKER_ENDPOINT: http://slacker:${SLACKER_PORT}
       UI_BUILD_PATH: /usr/src/app/ui
       PROXY_URL: http://nginx
       PORT: ${NGUI_PORT}
