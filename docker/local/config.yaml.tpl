@@ -67,6 +67,9 @@ etcd:
   auth:
     host: "auth"
     port: "8905"
+  katara:
+    host: "katara"
+    port: "${KATARA_PORT}"
   authdb:
     host: "mariadb"
     user: "${MARIADB_USER}"
